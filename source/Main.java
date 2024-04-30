@@ -1,30 +1,30 @@
 package source;
 
 import source.dataStructure.MyBuffer;
+import source.dataStructure.MyReader;
 import source.entity.Cat;
 import source.generators.CatGenerator;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
+        MyReader<Cat> myReader = new MyReader<>(1000, 4 + 20 + 8, true);
+
         File catFile = new File("cats");
         if(catFile.exists()){
             catFile.delete();
         }
-        MyBuffer<Cat> myBuffer = new MyBuffer<>(1000);
+        MyBuffer myBuffer = new MyBuffer(1000);
         List<Cat> catList = new ArrayList<>();
-        for(int i = 0; i < 15100; i++){
+        for(int i = 0; i < 1000000; i++){
             Cat cat = CatGenerator.generateCat();
             catList.add(cat);
         }
 
-        Cat writtenCat = catList.get(1001);
+        //Cat writtenCat = catList.get(100000);
 
         try {
             myBuffer.writeCatsToFile(catList, catFile);
@@ -34,14 +34,21 @@ public class Main {
 
         List<Cat> restoredCats = new ArrayList<>();
         try {
-            restoredCats = myBuffer.readCatsFromFile(catFile);
+            restoredCats = myReader.readEntitiesFromFile(catFile);
         } catch (Exception e){
             throw new RuntimeException(e);
         }
 
-        Cat restoredCat = restoredCats.get(1001);
+        //Cat restoredCat = restoredCats.get(100000);
         System.out.println("Porovnani kocek");
-        System.out.println("Puvodni: " + writtenCat);
-        System.out.println("Obnovena: " + restoredCat);
+        if(restoredCats.size() != catList.size()){
+            throw new RuntimeException("Velikost zapsanych kocek a obnovenych se nerovna");
+        }
+        for(int i = 0; i < restoredCats.size(); i++){
+            if(!restoredCats.get(i).equals(catList.get(i))){
+                throw new RuntimeException("Kocky se nerovnaji");
+            }
+        }
+        System.out.println("Program uspesne dobehl");
     }
 }

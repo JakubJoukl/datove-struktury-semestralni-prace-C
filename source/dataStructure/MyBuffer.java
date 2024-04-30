@@ -9,16 +9,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class MyBuffer<T> {
+public class MyBuffer {
     private byte[] bufferData;
     private int bufferSize;
     private int numberOfWrittenEntities;
     private int entitySize;
+    public int numbersUsed = 0;
 
-    public MyBuffer(int maxNumberOfEntitiesPerOperation){
+    public MyBuffer(int bufferEntityCapacity){
         //int (4), string (10 chars = 20B), double(8)
         this.entitySize = 4 + 20 + 8;
-        bufferSize = entitySize * maxNumberOfEntitiesPerOperation;
+        bufferSize = entitySize * bufferEntityCapacity;
         this.bufferData = new byte[bufferSize];
     }
 
@@ -44,17 +45,6 @@ public class MyBuffer<T> {
         }
     }
 
-    //TODO do nejakeho readeru, bude koordinovat buffery
-    public List<Cat> readCatsFromFile(File file) throws IOException, ClassNotFoundException {
-        List<Cat> returnedCats = new ArrayList<>();
-        int currentOffset = 0;
-        RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r");
-        while(fillBufferFromFile(randomAccessFile, currentOffset) != -1){
-            returnedCats.addAll(getStoredEntities());
-            currentOffset++;
-        }
-        return returnedCats;
-    }
 
     private void emptyBuffer() {
         bufferData = new byte[bufferSize];
@@ -68,26 +58,6 @@ public class MyBuffer<T> {
         Files.write(file.toPath(), Arrays.copyOfRange(bufferData, 0, entitySize * numberOfWrittenEntities), StandardOpenOption.APPEND);
     }
 
-    private int fillBufferFromFile(RandomAccessFile file, int readFromPosition) throws IOException {
-        //Nemelo by vyvolat vyjimku - viz kontrakt
-        file.seek((long) readFromPosition * bufferSize);
-        long nextOffsetInFile = (file.getFilePointer() + bufferSize);
-        long numberOfBytesToRead = bufferSize;
-
-        if(nextOffsetInFile > file.length()){
-            numberOfBytesToRead = file.length() - file.getFilePointer();
-            if(numberOfBytesToRead < 0) return -1;
-        }
-
-        int numberOFBytesRead = file.read(bufferData, 0, (int)numberOfBytesToRead);
-        if(numberOFBytesRead != -1) {
-            numberOfWrittenEntities = numberOFBytesRead / entitySize;
-        } else {
-            numberOfWrittenEntities = 0;
-        }
-        return numberOFBytesRead;
-    }
-
     private byte[] convertToBytes(Cat cat) throws IOException {
         try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
              DataOutputStream dos = new DataOutputStream(bos))
@@ -99,31 +69,8 @@ public class MyBuffer<T> {
         }
     }
 
-    private Cat convertFromBytes(byte[] bytes) throws IOException {
-        try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-             DataInputStream dis = new DataInputStream(bis))
-        {
-            int id = dis.readInt();
-            char[] nazevChars = new char[10];
-            for(int i = 0; i < nazevChars.length; i++){
-                nazevChars[i] = dis.readChar();
-            }
-            String nazev = String.valueOf(nazevChars);
-            double vaha = dis.readDouble();
-            return new Cat(id, nazev, vaha);
-        }
-    }
-
-    public List<Cat> getStoredEntities() throws IOException, ClassNotFoundException {
-        List<Cat> cats = new ArrayList<>();
-        for(int i = 0; i < numberOfWrittenEntities * entitySize; i+=entitySize){
-            byte[] catBytes = new byte[entitySize];
-            for(int j = 0; j < catBytes.length; j++){
-                catBytes[j] = bufferData[i+j];
-            }
-            cats.add(convertFromBytes(catBytes));
-        }
-        return cats;
+    public void setNumberOfWrittenEntities(int numberOfWrittenEntities) {
+        this.numberOfWrittenEntities = numberOfWrittenEntities;
     }
 
     public boolean isFull(){
@@ -132,5 +79,21 @@ public class MyBuffer<T> {
 
     public boolean isEmpty(){
         return numberOfWrittenEntities <= 0;
+    }
+
+    public int getBufferSize() {
+        return bufferSize;
+    }
+
+    public int getEntitySize() {
+        return entitySize;
+    }
+
+    public int getNumberOfWrittenEntities() {
+        return numberOfWrittenEntities;
+    }
+
+    public byte[] getBufferData() {
+        return bufferData;
     }
 }
